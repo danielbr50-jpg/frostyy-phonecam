@@ -1,0 +1,656 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>PhoneCam Pro Controller</title>
+    <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+            -webkit-user-select: none;
+            -webkit-touch-callout: none;
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Inter", sans-serif;
+        }
+
+        body {
+            background: radial-gradient(circle at 50% 0%, #232329 0%, #101013 100%);
+            color: rgba(255, 255, 255, 0.94);
+            height: 100dvh;
+            width: 100vw;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: env(safe-area-inset-top, 16px) 16px env(safe-area-inset-bottom, 16px) 16px;
+        }
+
+        .glass {
+            background: linear-gradient(165deg, rgba(42, 42, 48, 0.72) 0%, rgba(22, 22, 26, 0.82) 100%);
+            backdrop-filter: blur(26px) saturate(180%);
+            -webkit-backdrop-filter: blur(26px) saturate(180%);
+            border: 1px solid rgba(255, 255, 255, 0.13);
+            box-shadow: 0 12px 34px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.15);
+        }
+
+        /* Top Status & Remote Bar */
+        .top-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            padding-top: 6px;
+        }
+
+        .status-pill {
+            display: flex;
+            align-items: center;
+            gap: 7px;
+            padding: 8px 13px;
+            border-radius: 99px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #f5a623;
+            box-shadow: 0 0 8px #f5a623;
+        }
+        .dot.live {
+            background: #30d158;
+            box-shadow: 0 0 8px #30d158;
+        }
+
+        .top-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .pill-btn {
+            padding: 8px 13px;
+            border-radius: 99px;
+            font-size: 12px;
+            font-weight: 600;
+            color: #fff;
+            border: 1px solid rgba(255, 255, 255, 0.14);
+            background: rgba(255, 255, 255, 0.08);
+            active: scale(0.96);
+        }
+
+        .pill-btn.active {
+            background: rgba(255, 255, 255, 0.92);
+            color: #111;
+        }
+
+        /* Center Touchpad (Virtual Dolly Joystick + Crane Slider) */
+        .center-rig {
+            flex: 1;
+            margin: 14px 0;
+            display: grid;
+            grid-template-columns: 1fr 58px;
+            gap: 12px;
+        }
+
+        .touch-pad {
+            border-radius: 26px;
+            position: relative;
+            display: flex;
+             flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            touch-action: none;
+        }
+
+        .pad-grid {
+            position: absolute;
+            inset: 0;
+            background-image:
+                linear-gradient(to right, rgba(255,255,255,0.04) 1px, transparent 1px),
+                linear-gradient(to bottom, rgba(255,255,255,0.04) 1px, transparent 1px);
+            background-size: 33.33% 33.33%;
+            pointer-events: none;
+        }
+
+        .telemetry-readout {
+            position: absolute;
+            top: 14px;
+            left: 16px;
+            right: 16px;
+            display: flex;
+            justify-content: space-between;
+            font-family: "SF Mono", monospace;
+            font-size: 11px;
+            color: rgba(255, 255, 255, 0.52);
+            pointer-events: none;
+        }
+
+        .stick-nub {
+            width: 64px;
+            height: 64px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.14);
+            border: 1.5px solid rgba(255, 255, 255, 0.35);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+            pointer-events: none;
+            transition: transform 0.05s linear;
+        }
+
+        .pad-label {
+            position: absolute;
+            bottom: 14px;
+            font-size: 11px;
+            letter-spacing: 0.06em;
+            color: rgba(255, 255, 255, 0.38);
+            pointer-events: none;
+        }
+
+        .crane-track {
+            border-radius: 26px;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: space-between;
+            padding: 14px 0;
+            touch-action: none;
+        }
+
+        .crane-label {
+            font-size: 9.5px;
+            font-weight: 600;
+            letter-spacing: 0.06em;
+            color: rgba(255, 255, 255, 0.42);
+        }
+
+        .crane-nub {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.18);
+            border: 1px solid rgba(255, 255, 255, 0.35);
+        }
+
+        /* iPhone Camera Lenses & Controls */
+        .bottom-dock {
+            border-radius: 26px;
+            padding: 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .lens-selector {
+            display: flex;
+            justify-content: center;
+            gap: 12px;
+        }
+
+        .lens-circle {
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            background: rgba(0, 0, 0, 0.38);
+            border: 1px solid rgba(255, 255, 255, 0.14);
+            color: rgba(255, 255, 255, 0.78);
+            font-size: 12px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .lens-circle.active {
+            background: rgba(255, 255, 255, 0.92);
+            color: #111;
+            transform: scale(1.08);
+        }
+
+        .action-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .action-btn {
+            padding: 13px 10px;
+            border-radius: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            background: rgba(255, 255, 255, 0.08);
+            color: #fff;
+            font-size: 13px;
+            font-weight: 600;
+            text-align: center;
+        }
+
+        .action-btn.primary {
+            background: rgba(255, 255, 255, 0.92);
+            color: #111;
+        }
+
+        /* Start / Permission Modal (Erforderlich für iOS Gyroskop-Zugriff) */
+        .overlay-modal {
+            position: fixed;
+            inset: 0;
+            background: rgba(12, 12, 15, 0.92);
+            backdrop-filter: blur(30px);
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+        }
+
+        .modal-card {
+            width: 100%;
+            max-width: 360px;
+            border-radius: 28px;
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            text-align: center;
+        }
+
+        .modal-card h2 {
+            font-size: 20px;
+            font-weight: 700;
+        }
+
+        .modal-card p {
+            font-size: 13px;
+            line-height: 1.45;
+            color: rgba(255, 255, 255, 0.62);
+        }
+
+        .code-input {
+            width: 100%;
+            padding: 14px;
+            border-radius: 14px;
+            background: rgba(0, 0, 0, 0.35);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            color: #fff;
+            font-size: 18px;
+            font-family: "SF Mono", monospace;
+            text-align: center;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            outline: none;
+        }
+
+        .start-btn {
+            width: 100%;
+            padding: 15px;
+            border-radius: 16px;
+            border: none;
+            background: #ffffff;
+            color: #111;
+            font-size: 15px;
+            font-weight: 700;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- iOS / Android Sensor-Freigabe & Pairing Overlay -->
+    <div id="setup-modal" class="overlay-modal">
+        <div class="modal-card glass">
+            <h2>PhoneCam Pro</h2>
+            <p>Halte dein Smartphone so, wie du das Auto filmen möchtest, und starte das 6DoF-Tracking.</p>
+            <input type="text" id="inp-pair-id" class="code-input" placeholder="F3D-XXXXX">
+            <button id="btn-connect" class="start-btn">Sensoren aktivieren & Verbinden</button>
+        </div>
+    </div>
+
+    <!-- Top Leiste -->
+    <header class="top-bar">
+        <div class="status-pill glass">
+            <span id="status-dot" class="dot"></span>
+            <span id="status-text">Verbinde...</span>
+        </div>
+        <div class="top-actions">
+            <button id="btn-orientation" class="pill-btn glass">Hochformat</button>
+            <button id="btn-clean-feed" class="pill-btn glass">HUD AUS</button>
+        </div>
+    </header>
+
+    <!-- Mittleres Touch-Rig (Bewegungs-Joystick + Vertikaler Crane-Slider) -->
+    <main class="center-rig">
+        <div id="dolly-pad" class="touch-pad glass">
+            <div class="pad-grid"></div>
+            <div class="telemetry-readout">
+                <span id="txt-pitch">P: 0.0°</span>
+                <span id="txt-roll">R: 0.0°</span>
+                <span id="txt-yaw">Y: 0.0°</span>
+            </div>
+            <div id="stick-nub" class="stick-nub"></div>
+            <span class="pad-label">DOLLY / GEHEN (TOUCH & DRAG)</span>
+        </div>
+
+        <div id="crane-pad" class="crane-track glass">
+            <span class="crane-label">HOCH</span>
+            <div id="crane-nub" class="crane-nub"></div>
+            <span class="crane-label">TIEF</span>
+        </div>
+    </main>
+
+    <!-- Untere Kamera-Steuerung -->
+    <footer class="bottom-dock glass">
+        <div class="lens-selector">
+            <button class="lens-circle" data-fov="74">0.5</button>
+            <button class="lens-circle active" data-fov="50">1x</button>
+            <button class="lens-circle" data-fov="30">2x</button>
+            <button class="lens-circle" data-fov="18">3x</button>
+        </div>
+
+        <div class="action-grid">
+            <button id="btn-calibrate" class="action-btn primary">Kalibrieren (Zero)</button>
+            <button id="btn-attach" class="action-btn">Rollingshot Attach</button>
+        </div>
+    </footer>
+
+    <script>
+        // ====================================================================
+        // 1. GIMBAL-LOCK-FREIE 3D-ROTATIONSMATRIX (W3C Z-X'-Y'' -> GTA V)
+        // ====================================================================
+        const DEG2RAD = Math.PI / 180;
+        const RAD2DEG = 180 / Math.PI;
+
+        let landscapeMode = false;
+        let rawWorldAngles = { pitch: 0, roll: 0, yaw: 0 };
+        let calibOffsets = { pitch: 0, roll: 0, yaw: 0 };
+        let hasCalibrated = false;
+
+        let linearAccel = { x: 0, y: 0, z: 0 };
+        let moveStick = { x: 0, y: 0, z: 0 };
+
+        function shortestAngle(from, to) {
+            const diff = ((to - from) % 360 + 540) % 360 - 180;
+            return diff;
+        }
+
+        function computeCameraAnglesFromDevice(alpha, beta, gamma) {
+            const z = (alpha || 0) * DEG2RAD;
+            const x = (beta || 0) * DEG2RAD;
+            const y = (gamma || 0) * DEG2RAD;
+
+            const cz = Math.cos(z), sz = Math.sin(z);
+            const cx = Math.cos(x), sx = Math.sin(x);
+            const cy = Math.cos(y), sy = Math.sin(y);
+
+            // W3C Intrinsische Rotationsmatrix R = Rz(alpha) * Rx(beta) * Ry(gamma)
+            const r00 = cz * cy - sz * sx * sy;
+            const r01 = -cx * sz;
+            const r02 = cz * sy + cy * sz * sx;
+
+            const r10 = cy * sz + cz * sx * sy;
+            const r11 = cz * cx;
+            const r12 = sz * sy - cz * cy * sx;
+
+            const r20 = -cx * sy;
+            const r21 = sx;
+            const r22 = cx * cy;
+
+            // Rückkamera schaut entlang -Z des Geräts: f = -Col3(R)
+            const fx = -r02;
+            const fy = -r12;
+            const fz = -r22;
+
+            // Geräte-Rechts (Col1) & Geräte-Oben (Col2) für Portrait vs. Landscape
+            let rz = r20;
+            let uz = r21;
+            if (landscapeMode) {
+                rz = r21;
+                uz = -r20;
+            }
+
+            const yaw = Math.atan2(-fx, fy) * RAD2DEG;
+            const clampedFz = Math.max(-1, Math.min(1, fz));
+            const pitch = Math.asin(clampedFz) * RAD2DEG;
+            const roll = Math.atan2(-rz, uz) * RAD2DEG;
+
+            return { pitch, roll, yaw };
+        }
+
+        function calibrateNow() {
+            calibOffsets.pitch = rawWorldAngles.pitch;
+            calibOffsets.roll = rawWorldAngles.roll;
+            calibOffsets.yaw = rawWorldAngles.yaw;
+            hasCalibrated = true;
+            if (navigator.vibrate) navigator.vibrate(35);
+        }
+
+        // ====================================================================
+        // 2. SENSOR EVENT LISTENERS (60Hz Gyro + Linear Accelerometer)
+        // ====================================================================
+        function startSensorListeners() {
+            window.addEventListener('deviceorientation', (e) => {
+                if (e.alpha === null && e.beta === null) return;
+                rawWorldAngles = computeCameraAnglesFromDevice(e.alpha, e.beta, e.gamma);
+                if (!hasCalibrated) calibrateNow();
+            }, true);
+
+            window.addEventListener('devicemotion', (e) => {
+                if (e.acceleration) {
+                    linearAccel.x = e.acceleration.x || 0;
+                    linearAccel.y = e.acceleration.z || 0;
+                    linearAccel.z = e.acceleration.y || 0;
+                }
+            }, true);
+        }
+
+        // ====================================================================
+        // 3. WEBRTC PEERJS VERBINDUNG ZUM FIVEM NUI
+        // ====================================================================
+        let peer = null;
+        let conn = null;
+        let currentMode = 'freecam';
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const savedId = urlParams.get('id') || localStorage.getItem('frostyy_phonecam_id') || '';
+        document.getElementById('inp-pair-id').value = savedId;
+
+        function connectToFiveM(pairId) {
+            const cleanId = pairId.trim().toUpperCase();
+            if (!cleanId) return;
+            localStorage.setItem('frostyy_phonecam_id', cleanId);
+
+            if (peer) peer.destroy();
+            peer = new Peer({
+                config: {
+                    iceServers: [
+                        { urls: 'stun:stun.l.google.com:19302' },
+                        { urls: 'stun:stun1.l.google.com:19302' }
+                    ]
+                }
+            });
+
+            peer.on('open', () => {
+                const targetPeerId = `frostyy-cam-${cleanId.toLowerCase()}`;
+                conn = peer.connect(targetPeerId, { reliable: false, serialization: 'json' });
+
+                conn.on('open', () => {
+                    document.getElementById('status-dot').classList.add('live');
+                    document.getElementById('status-text').textContent = `LIVE • ${cleanId}`;
+                    calibrateNow();
+                });
+
+                conn.on('data', (data) => {
+                    if (!data) return;
+                    if (data.type === 'calibrateNow') {
+                        calibrateNow();
+                    } else if (data.type === 'hudState') {
+                        document.getElementById('btn-clean-feed').classList.toggle('active', Boolean(data.hidden));
+                    } else if (data.type === 'modeState') {
+                        currentMode = data.mode;
+                        document.getElementById('btn-attach').classList.toggle('primary', currentMode === 'attach');
+                    }
+                });
+
+                conn.on('close', () => {
+                    document.getElementById('status-dot').classList.remove('live');
+                    document.getElementById('status-text').textContent = 'Getrennt';
+                });
+            });
+        }
+
+        // 60Hz Sende-Loop an FiveM
+        setInterval(() => {
+            const relPitch = shortestAngle(calibOffsets.pitch, rawWorldAngles.pitch);
+            const relRoll  = shortestAngle(calibOffsets.roll, rawWorldAngles.roll);
+            const relYaw   = shortestAngle(calibOffsets.yaw, rawWorldAngles.yaw);
+
+            document.getElementById('txt-pitch').textContent = `P: ${relPitch.toFixed(1)}°`;
+            document.getElementById('txt-roll').textContent  = `R: ${relRoll.toFixed(1)}°`;
+            document.getElementById('txt-yaw').textContent   = `Y: ${relYaw.toFixed(1)}°`;
+
+            if (conn && conn.open) {
+                conn.send({
+                    type: 'sensor',
+                    pitch: relPitch,
+                    roll: relRoll,
+                    yaw: relYaw,
+                    ax: linearAccel.x,
+                    ay: linearAccel.y,
+                    az: linearAccel.z,
+                    mx: moveStick.x,
+                    my: moveStick.y,
+                    mz: moveStick.z
+                });
+            }
+        }, 16);
+
+        // ====================================================================
+        // 4. TOUCH-CONTROLS (DOLLY JOYSTICK, CRANE & BUTTONS)
+        // ====================================================================
+        document.getElementById('btn-connect').addEventListener('click', async () => {
+            if (typeof DeviceOrientationEvent !== 'undefined' &&
+                typeof DeviceOrientationEvent.requestPermission === 'function') {
+                try {
+                    await DeviceOrientationEvent.requestPermission();
+                } catch (err) {
+                    alert('Bitte erlaube den Bewegungs- & Gyroskop-Zugriff in Safari.');
+                }
+            }
+            if (typeof DeviceMotionEvent !== 'undefined' &&
+                typeof DeviceMotionEvent.requestPermission === 'function') {
+                try {
+                    await DeviceMotionEvent.requestPermission();
+                } catch (e) {}
+            }
+
+            startSensorListeners();
+            document.getElementById('setup-modal').classList.add('hidden');
+            connectToFiveM(document.getElementById('inp-pair-id').value);
+        });
+
+        // Dolly Pad (X/Y Bewegung)
+        const dollyPad = document.getElementById('dolly-pad');
+        const stickNub = document.getElementById('stick-nub');
+
+        function handleDollyTouch(e) {
+            e.preventDefault();
+            const touch = e.touches[0];
+            if (!touch) return;
+            const rect = dollyPad.getBoundingClientRect();
+            const cx = rect.left + rect.width / 2;
+            const cy = rect.top + rect.height / 2;
+            const maxR = Math.min(rect.width, rect.height) * 0.36;
+
+            let dx = touch.clientX - cx;
+            let dy = touch.clientY - cy;
+            const dist = Math.hypot(dx, dy);
+            if (dist > maxR) {
+                dx = (dx / dist) * maxR;
+                dy = (dy / dist) * maxR;
+            }
+
+            stickNub.style.transform = `translate(${dx}px, ${dy}px)`;
+            moveStick.x = +(dx / maxR).toFixed(3);
+            moveStick.y = +(-dy / maxR).toFixed(3);
+        }
+
+        dollyPad.addEventListener('touchstart', handleDollyTouch, { passive: false });
+        dollyPad.addEventListener('touchmove', handleDollyTouch, { passive: false });
+        dollyPad.addEventListener('touchend', () => {
+            stickNub.style.transform = 'translate(0px, 0px)';
+            moveStick.x = 0;
+            moveStick.y = 0;
+        });
+
+        // Crane Slider (Z Höhe)
+        const cranePad = document.getElementById('crane-pad');
+        const craneNub = document.getElementById('crane-nub');
+
+        function handleCraneTouch(e) {
+            e.preventDefault();
+            const touch = e.touches[0];
+            if (!touch) return;
+            const rect = cranePad.getBoundingClientRect();
+            const cy = rect.top + rect.height / 2;
+            const maxH = rect.height * 0.35;
+            const dy = Math.max(-maxH, Math.min(maxH, touch.clientY - cy));
+
+            craneNub.style.transform = `translateY(${dy}px)`;
+            moveStick.z = +(-dy / maxH).toFixed(3);
+        }
+
+        cranePad.addEventListener('touchstart', handleCraneTouch, { passive: false });
+        cranePad.addEventListener('touchmove', handleCraneTouch, { passive: false });
+        cranePad.addEventListener('touchend', () => {
+            craneNub.style.transform = 'translateY(0px)';
+            moveStick.z = 0;
+        });
+
+        // Linsen
+        document.querySelectorAll('.lens-circle').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.lens-circle').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                if (navigator.vibrate) navigator.vibrate(15);
+                if (conn && conn.open) {
+                    conn.send({ type: 'lens', fov: Number(btn.dataset.fov) });
+                }
+            });
+        });
+
+        // Kalibrieren
+        document.getElementById('btn-calibrate').addEventListener('click', () => {
+            calibrateNow();
+            if (conn && conn.open) conn.send({ type: 'calibrate' });
+        });
+
+        // Rollingshot Attach
+        document.getElementById('btn-attach').addEventListener('click', () => {
+            const nextMode = currentMode === 'attach' ? 'freecam' : 'attach';
+            if (navigator.vibrate) navigator.vibrate(25);
+            if (conn && conn.open) conn.send({ type: 'mode', mode: nextMode });
+        });
+
+        // Clean Feed (UI am PC komplett ausblenden)
+        document.getElementById('btn-clean-feed').addEventListener('click', () => {
+            if (navigator.vibrate) navigator.vibrate(20);
+            if (conn && conn.open) conn.send({ type: 'toggleCleanFeed' });
+        });
+
+        // Hochformat / Querformat Umschalter
+        document.getElementById('btn-orientation').addEventListener('click', (e) => {
+            landscapeMode = !landscapeMode;
+            e.target.textContent = landscapeMode ? 'Querformat' : 'Hochformat';
+            calibrateNow();
+        });
+    </script>
+</body>
+</html>
