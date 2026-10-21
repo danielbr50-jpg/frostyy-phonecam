@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="de">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
@@ -82,7 +82,6 @@
             color: #fff;
             border: 1px solid rgba(255, 255, 255, 0.14);
             background: rgba(255, 255, 255, 0.08);
-            active: scale(0.96);
         }
 
         .pill-btn.active {
@@ -103,7 +102,7 @@
             border-radius: 26px;
             position: relative;
             display: flex;
-             flex-direction: column;
+            flex-direction: column;
             align-items: center;
             justify-content: center;
             overflow: hidden;
@@ -236,7 +235,7 @@
             color: #111;
         }
 
-        /* Start / Permission Modal (Erforderlich für iOS Gyroskop-Zugriff) */
+        /* Start / Permission Modal (Required for iOS Gyroscope Access) */
         .overlay-modal {
             position: fixed;
             inset: 0;
@@ -304,29 +303,29 @@
 </head>
 <body>
 
-    <!-- iOS / Android Sensor-Freigabe & Pairing Overlay -->
+    <!-- iOS / Android Sensor Permission & Pairing Overlay -->
     <div id="setup-modal" class="overlay-modal">
         <div class="modal-card glass">
             <h2>PhoneCam Pro</h2>
-            <p>Halte dein Smartphone so, wie du das Auto filmen möchtest, und starte das 6DoF-Tracking.</p>
+            <p>Hold your phone naturally as if filming a car and tap below to start 6DoF motion tracking.</p>
             <input type="text" id="inp-pair-id" class="code-input" placeholder="F3D-XXXXX">
-            <button id="btn-connect" class="start-btn">Sensoren aktivieren & Verbinden</button>
+            <button id="btn-connect" class="start-btn">Enable Sensors & Connect</button>
         </div>
     </div>
 
-    <!-- Top Leiste -->
+    <!-- Top Bar -->
     <header class="top-bar">
         <div class="status-pill glass">
             <span id="status-dot" class="dot"></span>
-            <span id="status-text">Verbinde...</span>
+            <span id="status-text">Connecting...</span>
         </div>
         <div class="top-actions">
-            <button id="btn-orientation" class="pill-btn glass">Hochformat</button>
-            <button id="btn-clean-feed" class="pill-btn glass">HUD AUS</button>
+            <button id="btn-orientation" class="pill-btn glass">Portrait</button>
+            <button id="btn-clean-feed" class="pill-btn glass">HIDE HUD</button>
         </div>
     </header>
 
-    <!-- Mittleres Touch-Rig (Bewegungs-Joystick + Vertikaler Crane-Slider) -->
+    <!-- Center Touch Rig (Movement Joystick + Vertical Crane Slider) -->
     <main class="center-rig">
         <div id="dolly-pad" class="touch-pad glass">
             <div class="pad-grid"></div>
@@ -336,17 +335,17 @@
                 <span id="txt-yaw">Y: 0.0°</span>
             </div>
             <div id="stick-nub" class="stick-nub"></div>
-            <span class="pad-label">DOLLY / GEHEN (TOUCH & DRAG)</span>
+            <span class="pad-label">DOLLY / WALK (TOUCH & DRAG)</span>
         </div>
 
         <div id="crane-pad" class="crane-track glass">
-            <span class="crane-label">HOCH</span>
+            <span class="crane-label">UP</span>
             <div id="crane-nub" class="crane-nub"></div>
-            <span class="crane-label">TIEF</span>
+            <span class="crane-label">DOWN</span>
         </div>
     </main>
 
-    <!-- Untere Kamera-Steuerung -->
+    <!-- Bottom Camera Controls -->
     <footer class="bottom-dock glass">
         <div class="lens-selector">
             <button class="lens-circle" data-fov="74">0.5</button>
@@ -356,14 +355,14 @@
         </div>
 
         <div class="action-grid">
-            <button id="btn-calibrate" class="action-btn primary">Kalibrieren (Zero)</button>
-            <button id="btn-attach" class="action-btn">Rollingshot Attach</button>
+            <button id="btn-calibrate" class="action-btn primary">Calibrate (Zero)</button>
+            <button id="btn-attach" class="action-btn">Rolling Shot</button>
         </div>
     </footer>
 
     <script>
         // ====================================================================
-        // 1. GIMBAL-LOCK-FREIE 3D-ROTATIONSMATRIX (W3C Z-X'-Y'' -> GTA V)
+        // 1. GIMBAL-LOCK-FREE 3D ROTATION MATRIX (W3C Z-X'-Y'' -> GTA V)
         // ====================================================================
         const DEG2RAD = Math.PI / 180;
         const RAD2DEG = 180 / Math.PI;
@@ -377,8 +376,7 @@
         let moveStick = { x: 0, y: 0, z: 0 };
 
         function shortestAngle(from, to) {
-            const diff = ((to - from) % 360 + 540) % 360 - 180;
-            return diff;
+            return ((to - from) % 360 + 540) % 360 - 180;
         }
 
         function computeCameraAnglesFromDevice(alpha, beta, gamma) {
@@ -390,7 +388,7 @@
             const cx = Math.cos(x), sx = Math.sin(x);
             const cy = Math.cos(y), sy = Math.sin(y);
 
-            // W3C Intrinsische Rotationsmatrix R = Rz(alpha) * Rx(beta) * Ry(gamma)
+            // W3C Intrinsic Rotation Matrix R = Rz(alpha) * Rx(beta) * Ry(gamma)
             const r00 = cz * cy - sz * sx * sy;
             const r01 = -cx * sz;
             const r02 = cz * sy + cy * sz * sx;
@@ -403,12 +401,12 @@
             const r21 = sx;
             const r22 = cx * cy;
 
-            // Rückkamera schaut entlang -Z des Geräts: f = -Col3(R)
+            // Rear camera points along device -Z: f = -Col3(R)
             const fx = -r02;
             const fy = -r12;
             const fz = -r22;
 
-            // Geräte-Rechts (Col1) & Geräte-Oben (Col2) für Portrait vs. Landscape
+            // Device Right (Col1) & Device Up (Col2) for Portrait vs. Landscape
             let rz = r20;
             let uz = r21;
             if (landscapeMode) {
@@ -452,7 +450,7 @@
         }
 
         // ====================================================================
-        // 3. WEBRTC PEERJS VERBINDUNG ZUM FIVEM NUI
+        // 3. WEBRTC PEERJS CONNECTION TO FIVEM NUI
         // ====================================================================
         let peer = null;
         let conn = null;
@@ -501,12 +499,12 @@
 
                 conn.on('close', () => {
                     document.getElementById('status-dot').classList.remove('live');
-                    document.getElementById('status-text').textContent = 'Getrennt';
+                    document.getElementById('status-text').textContent = 'Disconnected';
                 });
             });
         }
 
-        // 60Hz Sende-Loop an FiveM
+        // 60Hz Telemetry Loop to FiveM
         setInterval(() => {
             const relPitch = shortestAngle(calibOffsets.pitch, rawWorldAngles.pitch);
             const relRoll  = shortestAngle(calibOffsets.roll, rawWorldAngles.roll);
@@ -533,7 +531,7 @@
         }, 16);
 
         // ====================================================================
-        // 4. TOUCH-CONTROLS (DOLLY JOYSTICK, CRANE & BUTTONS)
+        // 4. TOUCH CONTROLS (DOLLY JOYSTICK, CRANE & BUTTONS)
         // ====================================================================
         document.getElementById('btn-connect').addEventListener('click', async () => {
             if (typeof DeviceOrientationEvent !== 'undefined' &&
@@ -541,7 +539,7 @@
                 try {
                     await DeviceOrientationEvent.requestPermission();
                 } catch (err) {
-                    alert('Bitte erlaube den Bewegungs- & Gyroskop-Zugriff in Safari.');
+                    alert('Please allow Motion & Orientation access in Safari settings.');
                 }
             }
             if (typeof DeviceMotionEvent !== 'undefined' &&
@@ -556,7 +554,7 @@
             connectToFiveM(document.getElementById('inp-pair-id').value);
         });
 
-        // Dolly Pad (X/Y Bewegung)
+        // Dolly Pad (X/Y Movement)
         const dollyPad = document.getElementById('dolly-pad');
         const stickNub = document.getElementById('stick-nub');
 
@@ -590,7 +588,7 @@
             moveStick.y = 0;
         });
 
-        // Crane Slider (Z Höhe)
+        // Crane Slider (Z Elevation)
         const cranePad = document.getElementById('crane-pad');
         const craneNub = document.getElementById('crane-nub');
 
@@ -614,7 +612,7 @@
             moveStick.z = 0;
         });
 
-        // Linsen
+        // Lenses
         document.querySelectorAll('.lens-circle').forEach(btn => {
             btn.addEventListener('click', () => {
                 document.querySelectorAll('.lens-circle').forEach(b => b.classList.remove('active'));
@@ -626,29 +624,29 @@
             });
         });
 
-        // Kalibrieren
+        // Calibrate
         document.getElementById('btn-calibrate').addEventListener('click', () => {
             calibrateNow();
             if (conn && conn.open) conn.send({ type: 'calibrate' });
         });
 
-        // Rollingshot Attach
+        // Rolling Shot Attach
         document.getElementById('btn-attach').addEventListener('click', () => {
             const nextMode = currentMode === 'attach' ? 'freecam' : 'attach';
             if (navigator.vibrate) navigator.vibrate(25);
             if (conn && conn.open) conn.send({ type: 'mode', mode: nextMode });
         });
 
-        // Clean Feed (UI am PC komplett ausblenden)
+        // Clean Feed (Hide PC UI completely)
         document.getElementById('btn-clean-feed').addEventListener('click', () => {
             if (navigator.vibrate) navigator.vibrate(20);
             if (conn && conn.open) conn.send({ type: 'toggleCleanFeed' });
         });
 
-        // Hochformat / Querformat Umschalter
+        // Portrait / Landscape Toggle
         document.getElementById('btn-orientation').addEventListener('click', (e) => {
             landscapeMode = !landscapeMode;
-            e.target.textContent = landscapeMode ? 'Querformat' : 'Hochformat';
+            e.target.textContent = landscapeMode ? 'Landscape' : 'Portrait';
             calibrateNow();
         });
     </script>
